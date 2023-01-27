@@ -1,0 +1,428 @@
+package com.victor.BikeDisplayPanel;
+
+import java.awt.*;
+
+
+
+
+
+
+import java.io.File;
+import java.net.URL;
+import java.util.*;
+import java.util.List;
+import java.util.Vector;
+
+import javax.swing.*;
+import javax.swing.table.*;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import com.victor.BikeReturnPanel.BikeReturnPanel;
+import com.victor.CustomControl.CustomPanel;
+import com.victor.Login.LoginFrame;
+import com.victor.Login.Util;
+
+import com.victor.CustomLayout.CustomColumnLayout;
+
+import com.victor.CustomLayout.CustomRowLayout;
+import com.victor.JavaBeans.*;
+
+/**
+ * 
+ * @Description customize the content management panel
+ * @author Victor Wang Email:1779408741@qq.com
+ * @version
+ * @date 2020骞�11鏈�17鏃ヤ笅鍗�7:10:58
+ *
+ */
+public class BikeRentalPanel extends JPanel{
+
+	private static final long serialVersionUID = 1497919749058813246L;
+	public  DefaultTableModel tableModel = new DefaultTableModel();
+	public  List<BikeInfo> bikeList = new ArrayList<>();
+	private JTable table = null;
+	private JScrollPane scrollPane;
+	private CustomPanel bar;
+	private JFrame owner;
+	private UserInfo user;
+	private LoginFrame frame;
+	private BikeReturnPanel bikeReturn;
+	private JTextField searchField;
+	
+	public BikeRentalPanel(JFrame owner, UserInfo user, LoginFrame frame, BikeReturnPanel bikeReturn) {
+		//set the table to the main frame
+		this.owner = owner;
+		this.user = user;
+		this.frame = frame;
+		this.bikeReturn = bikeReturn;
+		this.setLayout(new CustomColumnLayout());
+		bar = new CustomPanel(this.getWidth(), this.getHeight());
+		bar.setBorder(BorderFactory.createLineBorder(Color.white, 4));
+		bar.setLayout(new CustomRowLayout());
+		this.add(bar, "50pixels");
+		
+		initialToolBar();
+		
+		initialTable();
+	}
+	
+	
+	public List<BikeInfo> getBikeList() {
+		return bikeList;
+	}
+
+
+	public void setBikeList(List<BikeInfo> bikeList) {
+		this.bikeList = bikeList;
+	}
+
+
+	/**
+	 * 
+	 * @Description initialize the table display
+	 * @author Victor
+	 * @date 2020骞�11鏈�22鏃ヤ笅鍗�9:18:512020骞�11鏈�22鏃�
+	 *
+	 */
+	private void initialTable() {
+		
+		table = new JTable(tableModel) {
+			private static final long serialVersionUID = 2L;
+
+			@Override
+			public boolean isCellEditable(int row, int column) {
+				return false;
+			}
+		};
+		
+		scrollPane = new JScrollPane(table);
+		table.setFillsViewportHeight(true);
+		table.setRowSelectionAllowed(true); 
+		table.setRowHeight(30);
+		this.add(scrollPane, "1w");
+		
+		tableModel.addColumn("Company");
+		tableModel.addColumn("Serial number");
+		tableModel.addColumn("Age");
+		tableModel.addColumn("Status");
+		tableModel.addColumn("Region");
+		
+		table.getColumnModel().getColumn(0).setCellRenderer(new CompanyColumnRenderer());
+		table.getColumnModel().getColumn(3).setCellRenderer(new StatusColumnRenderer());
+	}
+
+
+
+
+	/**
+	 * 
+	 * @Description load the bike information from the json file 
+	 * @author Victor
+	 * @date 2020骞�11鏈�22鏃ヤ笅鍗�5:29:262020骞�11鏈�22鏃�
+	 *
+	 */
+	public void loadData(String filePath) {
+		File file = new File(filePath);
+		if(!file.exists()) {
+			return;
+		}
+		
+		JSONArray array = null;
+		try {
+			array = (JSONArray)Util.readFromFile(file, "UTF-8");
+		} catch (Exception e) {
+			JOptionPane.showMessageDialog(this, e.getMessage());
+			e.printStackTrace();
+			return;
+		}
+		
+		tableModel.setRowCount(0);
+		bikeList.clear();
+		for(int i=0; i<array.length(); i++) {
+			JSONObject object = array.getJSONObject(i);
+			BikeInfo bike = new BikeInfo();
+			bike.setCompany(object.getString("company"));
+			bike.setID(object.getString("ID"));
+			bike.setStatus(object.getBoolean("status"));
+			bike.setYears(object.getString("years"));
+			bike.setRegion(object.getString("region"));
+			
+			addTableRow(bike);
+			addToDataList(bike);
+		}
+		
+	}
+
+	/**
+	 * 
+	 * @Description save data to the json file
+	 * @author Victor
+	 * @date 2020骞�11鏈�22鏃ヤ笅鍗�9:47:482020骞�11鏈�22鏃�
+	 *
+	 */
+	public void saveData(String filePath) {
+		JSONArray array = new JSONArray();
+		for(int i=0; i<bikeList.size(); i++) {
+			BikeInfo bike = bikeList.get(i);
+			JSONObject object = new JSONObject();
+			object.put("company", bike.getCompany());
+			object.put("ID",bike.getID());
+			object.put("status", bike.getStatus());
+			object.put("years", bike.getYears());
+			object.put("region", bike.getRegion());
+			array.put(object);
+		}
+		
+		File file = new File(filePath);
+		try {
+			Util.WriteToFile(array, file, "UTF-8");
+		} catch (Exception e) {
+//			JOptionPane.showMessageDialog(this, e.getMessage());
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * 
+	 * @Description add the item to the bike list
+	 * @author Victor
+	 * @date 2020骞�11鏈�22鏃ヤ笅鍗�9:47:442020骞�11鏈�22鏃�
+	 *
+	 */
+	private void addToDataList(BikeInfo bike) {
+		bikeList.add(bike);
+		
+	}
+
+	public void addTableRow(BikeInfo item) {
+		Vector<Object> rowData = new Vector<>();
+		rowData.add(item.getCompany());
+		rowData.add(item.getID());
+		rowData.add(item.getYears());
+		rowData.add(item.getStatus());	
+		rowData.add(item.getRegion());
+		tableModel.addRow(rowData); // 娣诲姞涓�琛�
+	}
+	
+	/**
+	 * 
+	 * @Description  initial ToolBar 
+	 * @author Victor
+	 * @date 2020骞�11鏈�22鏃ヤ笅鍗�3:38:312020骞�11鏈�22鏃�
+	 *
+	 */
+	private void initialToolBar() {
+		JToolBar toolBar = new JToolBar();
+		JLabel search = new JLabel(Util.loadIcon("/com/victor/Images/search.png"));
+		searchField = new JTextField();
+		toolBar.setFloatable(false);
+		bar.add(toolBar, "1w");
+		
+		toolBar.add(addToolButton("meituan.png", "Meituan", "Meituan"));
+		toolBar.add(addToolButton("mobike.png", "Mobike", "Mobike"));
+		toolBar.add(addToolButton("hello.png", "Hello", "Hello"));
+		toolBar.add(addToolButton("Green Orange.png", "Green Orange", "Green Orange"));
+		toolBar.addSeparator();
+		toolBar.add(addToolButton("sort.png", "sort", "sort"));
+		toolBar.add(addToolButton("rent.png", "rent", "rent"));
+		
+		toolBar.addSeparator();
+		toolBar.add(search);
+		toolBar.addSeparator(new Dimension(280, 10));
+		toolBar.add(search);
+		toolBar.add(searchField);
+		searchField.setMaximumSize(new Dimension(170,30));
+		searchField.addActionListener((e)->{
+			SearchItem();
+		});
+	}
+	
+	private void SearchItem() {
+		String filter = searchField.getText().trim();
+		if(filter.length()==0) {
+			tableModel.setRowCount(0);
+			for(BikeInfo bike : bikeList) {
+				addTableRow(bike);
+			}
+			return;
+		}
+		
+		tableModel.setRowCount(0);
+		for(BikeInfo bike : bikeList) {
+			if(bike.getID().indexOf(filter)>=0 || bike.getRegion().indexOf(filter)>=0){
+				addTableRow(bike);
+			}
+		}
+	}
+
+	/**
+	 * 
+	 * @Description add the tool button to the tool bar
+	 * @author Victor
+	 * @date 2020骞�11鏈�22鏃ヤ笅鍗�3:41:352020骞�11鏈�22鏃�
+	 *
+	 */
+	protected JButton addToolButton(String imageName, String action, String tooltip) {
+		URL imageURL = this.getClass().getResource("/com/victor/Images/"+ imageName);
+		JButton button = new JButton();
+		button.setActionCommand(action);
+		button.setToolTipText(tooltip);
+		button.setIcon(new ImageIcon(imageURL));
+		button.setFocusPainted(false);
+		
+		button.addActionListener((e) -> {
+			String action1 = e.getActionCommand();
+
+			switch (action1) {
+			case "Meituan":
+				loadData("Meituan.json");
+				break;
+			case "Mobike":
+				loadData("Mobike.json");
+				break;
+			case "Hello":
+				loadData("Hello.json");
+				break;
+			case "Green Orange":
+				loadData("Green Orange.json");
+				break;
+			}
+			
+			if(e.getActionCommand().equals("rent")) {
+				int[] rows = table.getSelectedRows();
+				if(rows.length==0) {
+					JOptionPane.showMessageDialog(this, "Please select at least one bike");
+				}else {
+					initialPopup(rows, button);
+				}
+			}
+			
+			if(e.getActionCommand().equals("sort")) {
+				if(tableModel.getRowCount()==0) {
+					JOptionPane.showMessageDialog(this, "Please select one company");
+				}else {
+					initialSortPopup(button);
+				}
+			}
+			
+		});
+		return button;
+	}
+
+	/**
+	 * 
+	 * @Description initial the sort popup
+	 * @author Victor
+	 * @date 2020骞�11鏈�23鏃ヤ笅鍗�7:23:222020骞�11鏈�23鏃�
+	 *
+	 */
+	private void initialSortPopup(JButton button) {
+		SortPopupContentPanel sortPopup = new SortPopupContentPanel(this);
+		sortPopup.showPopup(button, 0, button.getHeight());
+		
+	}
+
+	/**
+	 * 
+	 * @Description initial the rental popup
+	 * @author Victor
+	 * @date 2020骞�11鏈�23鏃ヤ笅鍗�7:23:252020骞�11鏈�23鏃�
+	 *
+	 */
+	private void initialPopup(int[] rows, JButton button) {
+		BikeInfo[] bikes = transmitSelectedRows();
+		RentalPopupContentPanel popupPanel = new RentalPopupContentPanel(rows, owner, bikes, user, frame, this, bikeReturn);
+		popupPanel.showPopup(button, 0, button.getHeight());
+	}
+	
+
+	/**
+	 * 
+	 * @Description transmit the students information to the popup. 
+	 * @author Victor
+	 * @date 2020骞�11鏈�26鏃ヤ笂鍗�11:54:562020骞�11鏈�26鏃�
+	 *
+	 */
+	private BikeInfo[] transmitSelectedRows() {
+		int[] rows = table.getSelectedRows();
+		if(rows.length==0) {
+			return null;
+		}
+		
+		BikeInfo[] bikes = new BikeInfo[rows.length];
+		for(int i=0; i<rows.length; i++) {
+			bikes[i]=getTableRow(rows[i]);
+		}
+		
+		return bikes;
+	}
+	
+	/**
+	 * 
+	 * @Description
+	 * @author Victor
+	 * @date 2020骞�11鏈�26鏃ヤ笂鍗�11:57:492020骞�11鏈�26鏃�
+	 *
+	 */
+	private BikeInfo getTableRow(int i) {
+		BikeInfo bike = new BikeInfo();
+		bike.setCompany((String)tableModel.getValueAt(i, 0));
+		bike.setID((String)tableModel.getValueAt(i, 1));
+		bike.setYears((String)tableModel.getValueAt(i, 2));
+		bike.setStatus((Boolean)tableModel.getValueAt(i, 3));
+		bike.setRegion((String)tableModel.getValueAt(i, 4));
+		return bike;
+	}
+	
+//	public static void main(String[] args) {
+//		Integer s;
+//		String years ="";
+//		Random random = new Random();
+//		boolean status;
+//		String region = "";
+//		for(int i=0; i<201; i++) {
+//			s = new Integer((random.nextInt(20) % (20 + 1)));
+//			if(s.compareTo(0)>=0 && s.compareTo(5)<0){
+//				years = "4";
+//			}else if(s.compareTo(5)>=0 && s.compareTo(10)<0) {
+//				years = "1";
+//			}else if(s.compareTo(10)>=0 && s.compareTo(15)<0) {
+//				years = "2";
+//			}else if(s.compareTo(15)>=0 && s.compareTo(20)<=0) {
+//				years = "3";
+//			}
+//			
+//			if(s.compareTo(3)<0 || ( s.compareTo(5)>0 && s.compareTo(8)<0) ||  
+//					(s.compareTo(12)>=0 && s.compareTo(15)<0) ||  ( s.compareTo(16)>0 &&  s.compareTo(18)<0)  ) {
+//				status = true;
+//			}else {
+//				status = false;
+//			}
+//			
+//			if(s.compareTo(0)>=0 && s.compareTo(4)<0){
+//				region ="Staten island";
+//			}else if(s.compareTo(4)>=0 && s.compareTo(7)<0) {
+//				region = "Brooklyn";
+//			}else if(s.compareTo(7)>=0 && s.compareTo(14)<0) {
+//				region = "Queens";
+//			}else if(s.compareTo(14)>=0 && s.compareTo(17)<0) {
+//				region = "Bronx";
+//			}else if(s.compareTo(17)>=0 && s.compareTo(20)<=0) {
+//				region = "Manhattan";
+//			}
+//			
+//			BikeInfo bike = new BikeInfo("Meituan", "10021"+String.valueOf(i), years+" years", status, region);
+//			addToDataList(bike);
+//		}
+//		
+//		saveData("Meituan.json");
+//		
+//		for(int i=0; i<bikeList.size(); i++) {
+//			System.out.println(bikeList.get(i).toString());
+//		}
+//	}
+////	
+
+}
